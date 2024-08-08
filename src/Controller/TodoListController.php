@@ -4,18 +4,20 @@ namespace App\Controller;
 
 use App\Entity\TodoList;
 use App\Repository\TodoListRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 class TodoListController extends AbstractController
 {
-    public function __construct(private readonly TodoListRepository $listRepository)
+    public function __construct(private readonly TodoListRepository $listRepository, private readonly EntityManagerInterface $entityManager)
     {
     }
 
-    #[Route('/lists', name: 'app_todo_lists', methods: ['GET'])]
+    #[Route('/lists', methods: ['GET'])]
     public function index(): JsonResponse
     {
         $lists = $this->listRepository->findAll();
@@ -24,16 +26,17 @@ class TodoListController extends AbstractController
     }
 
 
-    #[Route('/lists', name: 'app_todo_lists', methods: ['POST'])]
-    public function create(Request $request): JsonResponse
+    #[Route('/lists', methods: ['POST'])]
+    public function create(Request $request): Response
     {
         $list = (new TodoList())
             ->setName($request->get('name'));
 
-        $lists = $this->listRepository->persist($list);
+        $this->entityManager->persist($list);
+        $this->entityManager->flush();
+        // Or you can create a save method in the repository
+        // $this->listRepository->save($list);
 
-        $this->listRepository->flush();
-
-        return $this->json($lists);
+        return new Response(null, Response::HTTP_CREATED);
     }
 }

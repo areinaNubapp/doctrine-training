@@ -28,6 +28,12 @@ class TodoListRepository extends ServiceEntityRepository
         ;
     }
 
+    public function save(TodoList $list): void
+    {
+        $this->_em->persist($list);
+        $this->_em->flush();
+    }
+
     //    public function findOneBySomeField($value): ?TodoList
     //    {
     //        return $this->createQueryBuilder('t')
