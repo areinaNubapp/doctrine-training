@@ -1,0 +1,87 @@
+services:
+  traefik:
+    image: "traefik:v2.2"
+    container_name: "traefik"
+    command:
+      - "--accesslog"
+      - "--api.insecure=true"
+      - "--providers.file.filename=/ssl/traefik.yml"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=reverse-proxy"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./docker/dev/ssl:/ssl
+
+  php:
+    image: ${IMAGES_PREFIX:-}app-php
+    build:
+      context: .
+      target: frankenphp_dev
+    restart: unless-stopped
+    environment:
+      SERVER_NAME: http://orm.workspace.com
+      DATABASE_URL: ${DATABASE_URL}
+      # See https://xdebug.org/docs/all_settings#mode
+      XDEBUG_MODE: "${XDEBUG_MODE:-off}"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+      - ./:/app
+      - ./frankenphp/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./frankenphp/conf.d/app.dev.ini:/usr/local/etc/php/conf.d/app.dev.ini:ro
+      # If you develop on Mac or Windows you can remove the vendor/ directory
+      #  from the bind-mount for better performance by enabling the next line:
+      #- /app/vendor
+    extra_hosts:
+      # Ensure that host.docker.internal is correctly defined on Linux
+      - host.docker.internal:host-gateway
+    tty: true
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.routers.ai.rule=Host(`orm.workspace.com`)"
+      - "traefik.http.routers.ai.entrypoints=web"
+      - "traefik.http.routers.ai.middlewares=redirect-to-https"
+      - "traefik.http.routers.ai-secure.rule=Host(`orm.workspace.com`)"
+      - "traefik.http.routers.ai-secure.entrypoints=websecure"
+      - "traefik.http.routers.ai-secure.tls=true"
+
+# Mercure is installed as a Caddy module, prevent the Flex recipe from installing another service
+###> symfony/mercure-bundle ###
+###< symfony/mercure-bundle ###
+
+###> doctrine/doctrine-bundle ###
+  orm_database:
+    image: mysql:8.3.0
+    environment:
+      MYSQL_ROOT_PASSWORD: toor
+      MYSQL_DATABASE: orm
+      MYSQL_USER: symfony
+      MYSQL_PASSWORD: secret
+    volumes:
+      - database_data:/var/lib/mysql
+    ports:
+      - "3317:3306"
+###< doctrine/doctrine-bundle ###
+
+volumes:
+  caddy_data:
+  caddy_config:
+###> symfony/mercure-bundle ###
+
+###> doctrine/doctrine-bundle ###
+  database_data:
+###< doctrine/doctrine-bundle ###
+###< symfony/mercure-bundle ###
+
+networks:
+  default:
+    name: reverse-proxy
+    external: true

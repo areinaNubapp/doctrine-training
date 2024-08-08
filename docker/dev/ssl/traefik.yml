@@ -1,0 +1,6 @@
+tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /ssl/certs/workspace.com.crt
+        keyFile: /ssl/private/workspace.com.key
