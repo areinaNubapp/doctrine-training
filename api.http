@@ -1,0 +1,20 @@
+GET https://orm.workspace.com/lists
+Content-Type: application/json
+
+###
+POST https://orm.workspace.com/lists
+Content-Type: application/json
+
+{
+  "name": "My List",
+  "description": "This is my list"
+}
+
+###
+POST https://orm.workspace.com/lists/1/items
+Content-Type: application/json
+
+{
+  "name": "My Item",
+  "due_date": "2024-09-01"
+}
